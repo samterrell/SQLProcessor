@@ -18,10 +18,17 @@
  */
 package com.missiondata.oss.sqlprocessor;
 
-import bsh.EvalError;
+import com.missiondata.oss.exception.SystemException;
 
 import java.util.Iterator;
 
+/**
+ * Support for multiple beans, a named bean iterator, and
+ * <a href="http://www.beanshell.org">BeanShell</a> syntax in
+ * the parameter value substitutions
+ *
+ * @author Darren Day
+ */
 public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
 {
   private String iteratedBeanName;
@@ -31,6 +38,22 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
   public MultiBeanSQLProcessor(String description, String sqlText)
   {
     super(description, sqlText);
+  }
+
+  public void setIteratedBean(String key,Iterator iterator)
+  {
+    iteratedBeanName = key;
+    beanIterator = iterator;
+  }
+
+  public void set(String key,Object value)
+  {
+    if(taggedSQL.isSubstitutionKey(key))
+    {
+      taggedSQL.setSubstitution(key,value);
+    }
+
+    parameterEvaluator.set(key,value);
   }
 
   protected Object getValue(String key)
@@ -66,22 +89,6 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
     }
   }
 
-  public void setIteratedBean(String key,Iterator iterator)
-  {
-    iteratedBeanName = key;
-    beanIterator = iterator;
-  }
-
-  public void set(String key,Object value)
-  {
-    if(taggedSQL.isSubstitutionKey(key))
-    {
-      taggedSQL.setSubstitution(key,value);
-    }
-
-    parameterEvaluator.set(key,value);
-  }
-
   private BeanShellParameterEvaluator parameterEvaluator = new BeanShellParameterEvaluator();
 
   private class BeanShellParameterEvaluator implements ParameterEvaluator
@@ -94,10 +101,9 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
       {
         interpreter.set(key,value);
       }
-      catch (EvalError evalError)
+      catch (bsh.EvalError evalError)
       {
-        // todo catch this
-        evalError.printStackTrace();  //To change body of catch statement use Options | File Templates.
+        throw new SystemException("could not set in context",evalError);
       }
     }
 
@@ -110,8 +116,7 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
       }
       catch (bsh.EvalError evalError)
       {
-        // todo catch this
-        evalError.printStackTrace();  //To change body of catch statement use Options | File Templates.
+        throw new SystemException("could not evaluate",evalError);
       }
       return val;
     }
