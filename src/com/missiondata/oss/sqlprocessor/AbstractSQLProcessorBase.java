@@ -96,6 +96,21 @@ abstract public class AbstractSQLProcessorBase
   }
 
   /**
+   * Should be overriden to process the results of queries if you need to conditionally bail out early from the results.
+   *
+   * @see #process(java.sql.ResultSet)
+   *
+   * @param resultSet
+   * @return true to continue with processing.  false to abort processing
+   * @throws SQLException
+   */
+  protected boolean processAndContinue(ResultSet resultSet) throws SQLException
+  {
+    process(resultSet);
+    return true;
+  }
+
+  /**
    * Should be overriden to process the results of queries.  Note that the
    * result set is iterated over by this class, so the <code>next</code> and <code>close</code>
    * methods should never be called on <code>resultSet</code>
@@ -213,11 +228,12 @@ abstract public class AbstractSQLProcessorBase
 
             if (resultSet != null)
             {
+              boolean continueProcessing = true;
               ProxyRestrictingResultSet.RestrictedResultSet restrictedResultSet = ProxyRestrictingResultSet.restrict(resultSet);
-              while (resultSet.next())
+              while (continueProcessing && resultSet.next())
               {
                 results = true;
-                process(restrictedResultSet);
+                continueProcessing = processAndContinue(restrictedResultSet);
               }
             }
           }
