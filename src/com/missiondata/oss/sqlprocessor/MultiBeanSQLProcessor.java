@@ -38,6 +38,7 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
   public MultiBeanSQLProcessor(String description, String sqlText)
   {
     super(description, sqlText);
+    addEvaluator(parameterEvaluator);
   }
 
   public void setIteratedBean(String key,Iterator iterator)
@@ -54,11 +55,6 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
     }
 
     parameterEvaluator.set(key,value);
-  }
-
-  protected Object getValue(String key)
-  {
-    return parameterEvaluator.getParameterValue(key);
   }
 
   protected boolean isSetUp()

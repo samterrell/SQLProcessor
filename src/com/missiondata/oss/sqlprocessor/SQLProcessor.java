@@ -85,6 +85,7 @@ public class SQLProcessor extends AbstractSQLProcessorBase
   public SQLProcessor(String description, String sqlText)
   {
     super(description,sqlText);
+    addEvaluator(new InternalDefaultParameterEvaluator());
     setBean(singletonIterator(new Object()));
   }
 
@@ -283,11 +284,6 @@ public class SQLProcessor extends AbstractSQLProcessorBase
     this.bean = bean;
   }
 
-  protected Object getValue(String key)
-  {
-    return chainingParameterEvaluator.getParameterValue(key);
-  }
-
   protected Iterator getBeanIterator()
   {
     return beanIterator;
@@ -321,11 +317,6 @@ public class SQLProcessor extends AbstractSQLProcessorBase
     classToNullType.put(theClass.toString(), new SQLNull(type));
   }
 
-  public void addEvaluator(ParameterEvaluator evaluator)
-  {
-    chainingParameterEvaluator.addEvaluator(evaluator);
-  }
-
   protected SQLNull convertBeanToNullType(String parameter)
   {
     return (SQLNull)beanToNullType.get(parameter);
@@ -342,11 +333,6 @@ public class SQLProcessor extends AbstractSQLProcessorBase
   private Map parameterValues = new HashMap();
   private Map beanToNullType = new HashMap();
   private Map classToNullType = new HashMap();
-
-  private ChainingParameterEvaluator chainingParameterEvaluator = new ChainingParameterEvaluator();
-  {
-    chainingParameterEvaluator.addEvaluator(new InternalDefaultParameterEvaluator());
-  }
 
   private static class EmptyBean extends Object
   {

@@ -21,7 +21,6 @@ package com.missiondata.oss.sqlprocessor;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 public class ChainingParameterEvaluator implements ParameterEvaluator
 {

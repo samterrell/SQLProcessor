@@ -27,8 +27,10 @@ import junit.framework.TestCase;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.sql.Connection;
 import java.util.LinkedList;
 import java.util.List;
+import java.math.BigInteger;
 
 /**
  * @author Leslie Hensley
@@ -680,6 +682,115 @@ public class _SQLProcessorTest extends TestCase
     mockConnectionSource.verify();
   }
 
+  public void testBeanShellLoggingCapability()
+  {
+    MockMultiRowResultSet res1 = createMockResultSet();
+    mockPreparedStatement.addResultSet(res1);
+
+    MockMultiRowResultSet res2 = createMockResultSet();
+    mockPreparedStatement.addResultSet(res2);
+
+    MockMultiRowResultSet res3 = createMockResultSet();
+    mockPreparedStatement.addResultSet(res3);
+
+    mockPreparedStatement.addExpectedSetParameter(1, "closed");
+    mockPreparedStatement.addExpectedSetParameter(2, "STEVE");
+    mockPreparedStatement.addExpectedSetParameter(2, "RICH");
+    mockPreparedStatement.addExpectedSetParameter(2, "LESLIE");
+
+    mockPreparedStatement.setExpectedExecuteCalls(3);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    java.util.List names = new LinkedList();
+
+    names.add("Steve");
+    names.add("Rich");
+    names.add("Leslie");
+
+    final List infos = new LinkedList();
+    LoggingCapability mockLogger = new LoggingCapability()
+    {
+      public void logInfo(String information)
+      {
+        infos.add(information);
+      }
+
+      public void logWarning(String error, Throwable t)
+      {
+      }
+
+      public void logError(String error, Throwable t)
+      {
+      }
+    };
+
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing", "SELECT id, job FROM #table# WHERE state = |dbdbean.state| AND name = |name.toUpperCase()|");
+    sqlProcessor.setLoggingCapability(mockLogger);
+
+    sqlProcessor.setIteratedBean("name", names.iterator());
+    sqlProcessor.set("dbdbean", new Bean());
+    sqlProcessor.set("table", "foo");
+
+    sqlProcessor.execute(mockConnectionSource);
+
+    assertEquals("Logged info messages",3,infos.size());
+    assertEquals("Logged first message","testing: SELECT id, job FROM foo WHERE state = 'closed' AND name = 'STEVE'",infos.get(0));
+    assertEquals("Logged first message","testing: SELECT id, job FROM foo WHERE state = 'closed' AND name = 'RICH'",infos.get(1));
+    assertEquals("Logged first message","testing: SELECT id, job FROM foo WHERE state = 'closed' AND name = 'LESLIE'",infos.get(2));
+
+    res1.verify();
+    res2.verify();
+    res3.verify();
+    mockPreparedStatement.verify();
+    mockConnection.verify();
+    mockConnectionSource.verify();
+  }
+
+  public void testInsertedIdCapability()
+  {
+    mockPreparedStatement.addExpectedSetParameter(1, "closed");
+    mockPreparedStatement.addExpectedSetParameter(2, "STEVE");
+    mockPreparedStatement.addExpectedSetParameter(2, "RICH");
+    mockPreparedStatement.addExpectedSetParameter(2, "LESLIE");
+
+    mockPreparedStatement.setExpectedExecuteCalls(3);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("INSERT INTO foo VALUES (?, ?)");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    java.util.List names = new LinkedList();
+    names.add("Steve");
+    names.add("Rich");
+    names.add("Leslie");
+
+    InsertedIdCapability mockInsertedIdCapability = new InsertedIdCapability()
+    {
+      int i = 0;
+      public BigInteger fetchLastInsertedId(Connection conn)
+      {
+        return new BigInteger(String.valueOf(i++));
+      }
+    };
+
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing", "INSERT INTO #table# VALUES (|dbdbean.state|, |name.toUpperCase()|)");
+    sqlProcessor.setInsertedIdCapability(mockInsertedIdCapability);
+    sqlProcessor.setIteratedBean("name", names.iterator());
+    sqlProcessor.set("dbdbean", new Bean());
+    sqlProcessor.set("table", "foo");
+
+    sqlProcessor.execute(mockConnectionSource);
+
+    assertEquals("Collected inserted ids",sqlProcessor.getInsertedIds().length,3);
+    assertEquals("Last inserted id",sqlProcessor.getLastInsertedId(),new BigInteger("2"));
+
+    mockPreparedStatement.verify();
+    mockConnection.verify();
+    mockConnectionSource.verify();
+  }
 
   private void setAndExecute(SQLProcessor sqlProcessor, ConnectionSource connectionSource)
   {
