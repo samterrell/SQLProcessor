@@ -651,6 +651,36 @@ public class _SQLProcessorTest extends TestCase
     mockConnectionSource.verify();
   }
 
+  public void testBeanShellParameterEvaluatorWithEmptyIterator()
+  {
+    mockPreparedStatement.setExpectedExecuteCalls(0);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    java.util.List names = new LinkedList();
+
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing", "SELECT id, job FROM #table# WHERE state = |dbdbean.state| AND name = |name.toUpperCase()|")
+    {
+      protected void process(ResultSet resultSet) throws SQLException
+      {
+        assertTrue("Should never be executed",false);
+      }
+    };
+
+    sqlProcessor.setIteratedBean("name", names.iterator());
+    sqlProcessor.set("dbdbean", new Bean());
+    sqlProcessor.set("table", "foo");
+
+    sqlProcessor.execute(mockConnectionSource);
+
+    mockPreparedStatement.verify();
+    mockConnection.verify();
+    mockConnectionSource.verify();
+  }
+
+
   private void setAndExecute(SQLProcessor sqlProcessor, ConnectionSource connectionSource)
   {
     sqlProcessor.set("table", "foo");
