@@ -128,6 +128,20 @@ public class _SQLProcessorTest extends TestCase
     sqlProcessor.execute(mockConnectionSource);
   }
 
+  public void testQueryExtraParameter()
+  {
+    SQLProcessor sqlProcessor = new SQLProcessor("SELECT id, job FROM #table# WHERE state = |state| AND name = |name|");
+    try
+    {
+      sqlProcessor.set("extra", "extra-value");
+      fail("Exception expected");
+    }
+    catch(IllegalArgumentException e)
+    {
+    }
+
+  }
+
   public void testQuery()
   {
     mockPreparedStatement.addResultSet(mockResultSet);
