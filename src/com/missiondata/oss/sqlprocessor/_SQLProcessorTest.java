@@ -30,6 +30,8 @@ import java.sql.Types;
 import java.sql.Connection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Date;
+import java.util.logging.Level;
 import java.math.BigInteger;
 
 /**
@@ -679,38 +681,49 @@ public class _SQLProcessorTest extends TestCase
     mockPreparedStatement.addResultSet(mockResultSet);
     mockPreparedStatement.addExpectedSetParameter(1, null);
     mockPreparedStatement.addExpectedSetParameter(2, null);
+    mockPreparedStatement.addExpectedSetParameter(3, null);
     mockPreparedStatement.setExpectedExecuteCalls(1);
     mockPreparedStatement.setExpectedCloseCalls(1);
 
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ? AND foo=?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    final boolean[] hit=new boolean[]{false,false,false};
     ParameterEvaluator mockParameterEvaluator = new ParameterEvaluator()
     {
       public Object getParameterValue(String parameter, Object suggestedValue)
       {
-        if("dbdbean.state".equals(parameter))
+        if(parameter.equals("dbdbean.state;CHAR"))
         {
-          assertEquals("expected nulltype",((SQLNull)suggestedValue).getType(),java.sql.Types.CHAR);
+          assertEquals("should be char",Types.CHAR,((SQLNull)suggestedValue).getType());
+          hit[0]=true;
         }
-
-        if("dbdbean.name".equals(parameter))
+        if(parameter.equals("dbdbean.name"))
         {
-          assertEquals("expected null",((SQLNull)suggestedValue).getType(),java.sql.Types.OTHER);
+          assertEquals("should be other",Types.OTHER,((SQLNull)suggestedValue).getType());
+          hit[1]=true;
         }
-
+        if(parameter.equals("null;JAVA_OBJECT"))
+        {
+          assertEquals("should be int",Types.JAVA_OBJECT,((SQLNull)suggestedValue).getType());
+          hit[2]=true;
+        }
         return suggestedValue;
       }
     };
 
-    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
-    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
-
-    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing","SELECT id, job FROM #table# WHERE state = |dbdbean.state| AND name = |(Object)dbdbean.name|");
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing","SELECT id, job FROM #table# WHERE state = |dbdbean.state;CHAR| AND name = |dbdbean.name| AND foo=|null;JAVA_OBJECT|");
     sqlProcessor.addEvaluator(mockParameterEvaluator);
     sqlProcessor.set("dbdbean", new Bean(null,null,5));
     sqlProcessor.set("table","foo");
 
     sqlProcessor.execute(mockConnectionSource);
-  }
 
+    assertTrue("all were hit",hit[0]&&hit[1]&&hit[2]);
+
+    mockPreparedStatement.verify();
+    mockConnection.verify();
+  }
 
   public void testBeanShellParameterEvaluatorWithIterator()
   {

@@ -21,7 +21,10 @@ package com.missiondata.oss.sqlprocessor;
 import com.missiondata.oss.exception.SystemException;
 
 import java.util.Iterator;
+import java.util.StringTokenizer;
 import java.sql.Types;
+
+import bsh.EvalError;
 
 /**
  * Support for multiple beans, a named bean iterator, and
@@ -42,20 +45,38 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
     addEvaluator(parameterEvaluator);
   }
 
-  public void setIteratedBean(String key,Iterator iterator)
+  /**
+   * Binds a bean name to the contencts of the iterator.
+   * <p>
+   * The processor iterates over the contents and
+   * sets the <i>iteratedBeanName</i> to each member of the iterated
+   * collection, and then executes the PreparedStatement.
+   * <p>
+   * Execution ends when the iterator is exhausted or when {@link #setUp} call
+   * returns false
+   *
+   * @param iteratedBeanName bound with each individual member of the iterator
+   * @param iterator source of values for the bean
+   */
+  public void setIteratedBean(String iteratedBeanName, Iterator iterator)
   {
-    iteratedBeanName = key;
+    this.iteratedBeanName = iteratedBeanName;
     beanIterator = iterator;
   }
 
-  public void set(String key,Object value)
+  /**
+   *
+   * @param parameter
+   * @param value
+   */
+  public void set(String parameter,Object value)
   {
-    if(taggedSQL.isSubstitutionKey(key))
+    if(taggedSQL.isSubstitutionKey(parameter))
     {
-      taggedSQL.setSubstitution(key,value);
+      taggedSQL.setSubstitution(parameter,value);
     }
 
-    parameterEvaluator.set(key,value);
+    parameterEvaluator.set(parameter,value);
   }
 
   protected boolean isSetUp()
@@ -92,11 +113,6 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
   {
     private bsh.Interpreter interpreter = new bsh.Interpreter();
 
-    public BeanShellParameterEvaluator()
-    {
-      set("__nullFilter",new NullTypeFilter());
-    }
-
     public void set(String key, Object value)
     {
       try
@@ -114,10 +130,11 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
       Object val = null;
       try
       {
-        val = interpreter.eval(parameter);
+        Object[] parsed = parseParameterAndNull(parameter);
+        val = interpreter.eval((String)parsed[0]);
         if(val==null)
         {
-          val = interpreter.eval("__nullFilter.nullFor("+parameter+")");
+          val = parsed[1];
         }
       }
       catch (bsh.EvalError evalError)
@@ -126,23 +143,51 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
       }
       return val;
     }
+
+    private Object[] parseParameterAndNull(String parameter)
+    {
+      SQLNull retNull=new SQLNull(Types.OTHER);
+
+      StringTokenizer stringTok = new StringTokenizer(parameter,";",false);
+      int numTokens = stringTok.countTokens();
+      if(numTokens>1)
+      {
+        StringBuffer pre = new StringBuffer();
+        while(stringTok.hasMoreTokens())
+        {
+          numTokens--;
+          String token = stringTok.nextToken();
+          if(numTokens>0)
+          {
+            pre.append(token);
+          }
+          else
+          {
+            char[] ca = token.toCharArray();
+            boolean isIdentifier=Character.isJavaIdentifierStart(ca[0]);
+            for (int i = 1; i < ca.length && isIdentifier; i++)
+            {
+              isIdentifier = Character.isJavaIdentifierPart(ca[i]);
+            }
+            if(isIdentifier)
+            {
+              try
+              {
+                Integer typeVal = (Integer) interpreter.eval("java.sql.Types."+token);
+                retNull = new SQLNull(typeVal.intValue());
+                parameter = pre.toString();
+              } catch (EvalError ignore){};
+
+            }
+          }
+        }
+      }
+
+      return new Object[]{parameter,retNull};
+    }
+
   }
 
-  public static class NullTypeFilter
-  {
-    public SQLNull nullFor(Object o) { return new SQLNull(Types.OTHER); };
-    public SQLNull nullFor(String s) { return new SQLNull(Types.CHAR); };
-    public SQLNull nullFor(java.math.BigDecimal b) { return new SQLNull(Types.NUMERIC); };
-    public SQLNull nullFor(Boolean b) { return new SQLNull(Types.BIT); };
-    public SQLNull nullFor(Byte b) { return new SQLNull(Types.TINYINT); };
-    public SQLNull nullFor(Short s) { return new SQLNull(Types.SMALLINT); };
-    public SQLNull nullFor(Integer i) { return new SQLNull(Types.INTEGER); };
-    public SQLNull nullFor(Long l) { return new SQLNull(Types.BIGINT); };
-    public SQLNull nullFor(Float f) { return new SQLNull(Types.REAL); };
-    public SQLNull nullFor(Double d) { return new SQLNull(Types.DOUBLE); };
-    public SQLNull nullFor(byte[] b) { return new SQLNull(Types.LONGVARBINARY); };
-    public SQLNull nullFor(java.util.Date d) { return new SQLNull(Types.DATE); };
-  }
 }
 
 
