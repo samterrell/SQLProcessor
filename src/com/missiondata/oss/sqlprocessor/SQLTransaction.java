@@ -18,6 +18,8 @@
  */
 package com.missiondata.oss.sqlprocessor;
 
+import com.missiondata.oss.exception.SystemException;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -34,7 +36,6 @@ import java.util.List;
  */
 public class SQLTransaction
 {
-  private static LoggingCapability logImpl = LoggingCapabilityFactory.getLoggingCapability("sqltransaction");
   private List sqlStatements = new ArrayList();
 
   public SQLTransaction()
@@ -74,10 +75,15 @@ public class SQLTransaction
         rollback(connection);
       }
     }
+    catch (SQLException e)
+    {
+      rollback(connection);
+      throw new SQLSystemException("Error executing transaction.  Rolledback", e);
+    }
     catch (Exception e)
     {
-      logImpl.logWarning("Transaction was rolled back", e);
       rollback(connection);
+      throw new SystemException("Error executing transaction.  Rolledback", e);
     }
     finally
     {
@@ -165,7 +171,7 @@ public class SQLTransaction
     }
     catch (SQLException e)
     {
-      logImpl.logError("Error setting autocommit to true", e);
+      throw new SQLSystemException("Error setting autocommit to true", e);
     }
   }
 
