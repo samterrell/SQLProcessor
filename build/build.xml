@@ -1,0 +1,65 @@
+<!--
+ * SQLProcessor - a facade for the JDBC API
+ * Copyright (C) 2001-2003 Mission Data
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License along with this library; if not, write to the Free
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-->
+<project name="SQLProcessor" default="cleandist" basedir="../">
+
+  <path id="class.path">
+    <fileset dir="./lib">
+      <include name="**/*.jar"/>
+    </fileset>
+  </path>
+
+  <target name="cleandist" depends="clean, package" />
+
+  <target name="clean">
+    <delete dir="./deploy" />
+  </target>
+
+  <target name="package" depends="test">
+    <jar jarfile="./deploy/sqlprocessor.jar">
+      <fileset dir="." includes="LICENSE.TXT"/>
+      <fileset dir="./deploy/classes" excludes="**/_*.class"/>
+    </jar>
+  </target>
+
+  <target name="test" depends="compile">
+    <junit printsummary="yes" haltonfailure="yes" fork="no">
+      <classpath>
+          <pathelement location="./deploy/classes" />
+          <fileset dir="./lib">
+            <include name="**/*.jar"/>
+          </fileset>
+      </classpath>
+
+      <formatter type="plain"/>
+
+      <test name="com.missiondata.oss.sqlprocessor._SQLProcessorTest"/>
+      <test name="com.missiondata.oss.sqlprocessor._TaggedSQLTest"/>
+    </junit>
+  </target>
+
+  <target name="compile" depends="directories">
+    <javac classpathref="class.path" srcdir="./src" destdir="./deploy/classes"/>
+  </target>
+
+  <target name="directories">
+    <mkdir dir="./deploy/" />
+    <mkdir dir="./deploy/classes" />
+  </target>
+
+</project>
