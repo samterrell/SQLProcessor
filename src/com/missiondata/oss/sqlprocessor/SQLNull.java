@@ -22,7 +22,7 @@ public class SQLNull
 {
   private int type;
 
-  SQLNull(int type)
+  public SQLNull(int type)
   {
     this.type = type;
   }
