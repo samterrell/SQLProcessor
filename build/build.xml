@@ -43,7 +43,11 @@
   </target>
 
   <target name="docs" depends="directories" description="Create javadoc in the deploy directory">
-    <javadoc sourcepath="./src" packagenames="com.missiondata.oss.*" destdir="./deploy/javadoc" />
+    <javadoc destdir="./deploy/javadoc">
+      <fileset dir="./src" defaultexcludes="yes">
+        <exclude name="com/missiondata/oss/**/_*.java"/>
+      </fileset>
+    </javadoc>
   </target>
 
   <target name="clean" description="Drop the deploy directory">
