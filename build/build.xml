@@ -24,21 +24,9 @@
     </fileset>
   </path>
 
-  <target name="cleandist" depends="clean, package" />
+  <target name="cleandist" depends="clean, package" description="Recreate dist directory with freshly compiled and packaged source"/>
 
-  <target name="clean">
-    <delete dir="./deploy" />
-  </target>
-
-  <target name="package" depends="test">
-    <jar jarfile="./deploy/sqlprocessor.jar">
-      <fileset dir="." includes="LICENSE.TXT"/>
-      <fileset dir="./deploy/classes" excludes="**/_*.class"/>
-    </jar>
-    <copy file="./lib/bsh-core-2.0b1.jar" todir="./deploy"/>
-  </target>
-
-  <target name="test" depends="compile">
+  <target name="test" depends="compile" description="Compile source and run unit tests">
     <junit printsummary="yes" haltonfailure="yes" fork="no">
       <classpath>
           <pathelement location="./deploy/classes" />
@@ -54,6 +42,22 @@
     </junit>
   </target>
 
+  <target name="docs" depends="directories" description="Create javadoc in the deploy directory">
+    <javadoc sourcepath="./src" packagenames="com.missiondata.oss.*" destdir="./deploy/javadoc" />
+  </target>
+
+  <target name="clean" description="Drop the deploy directory">
+    <delete dir="./deploy" />
+  </target>
+
+  <target name="package" depends="test,docs">
+    <jar jarfile="./deploy/sqlprocessor.jar">
+      <fileset dir="." includes="LICENSE.TXT"/>
+      <fileset dir="./deploy/classes" excludes="**/_*.class"/>
+    </jar>
+    <copy file="./lib/bsh-core-2.0b1.jar" todir="./deploy"/>
+  </target>
+
   <target name="compile" depends="directories">
     <javac classpathref="class.path" srcdir="./src" destdir="./deploy/classes"/>
   </target>
@@ -61,6 +65,7 @@
   <target name="directories">
     <mkdir dir="./deploy/" />
     <mkdir dir="./deploy/classes" />
+    <mkdir dir="./deploy/javadoc" />
   </target>
 
 </project>
