@@ -39,6 +39,7 @@
 
       <test name="com.missiondata.oss.sqlprocessor._SQLProcessorTest"/>
       <test name="com.missiondata.oss.sqlprocessor._TaggedSQLTest"/>
+      <test name="com.missiondata.oss.sqlprocessor._LeakTrackerTest"/>
     </junit>
   </target>
 
