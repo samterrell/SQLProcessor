@@ -219,6 +219,43 @@ public class _SQLProcessorTest extends TestCase
         {
           protected void process(ResultSet resultSet) throws SQLException
           {
+
+            boolean prevFailed = false;
+            try
+            {
+              resultSet.previous();
+              assertTrue("Shouldn't reach here", false);
+            }
+            catch (UnsupportedOperationException e)
+            {
+              prevFailed = true;
+            }
+            assertTrue("previous threw exception",prevFailed);
+
+            boolean nextFailed = false;
+            try
+            {
+              resultSet.next();
+              assertTrue("Shouldn't reach here", false);
+            }
+            catch (UnsupportedOperationException e)
+            {
+              nextFailed = true;
+            }
+            assertTrue("next threw exception",nextFailed);
+
+            boolean closeFailed = false;
+            try
+            {
+              resultSet.close();
+              assertTrue("Shouldn't reach here", false);
+            }
+            catch (UnsupportedOperationException e)
+            {
+              closeFailed = true;
+            }
+            assertTrue("close threw exception",closeFailed);
+
             resultSet.next();
             assertTrue("Should not reach here", false);
           }

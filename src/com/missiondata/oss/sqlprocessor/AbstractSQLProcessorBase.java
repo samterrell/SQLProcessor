@@ -197,7 +197,7 @@ abstract public class AbstractSQLProcessorBase
 
             if (resultSet != null)
             {
-              RestrictedResultSet restrictedResultSet = new RestrictedResultSet(resultSet);
+              ProxyRestrictingResultSet.RestrictedResultSet restrictedResultSet = ProxyRestrictingResultSet.restrict(resultSet);
               while (resultSet.next())
               {
                 results = true;
