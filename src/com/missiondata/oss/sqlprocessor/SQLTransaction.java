@@ -80,6 +80,11 @@ public class SQLTransaction
       rollback(connection);
       throw new SQLSystemException("Error executing transaction.  Rolledback", e);
     }
+    catch (RuntimeException e)
+    {
+      rollback(connection);
+      throw e;      
+    }
     catch (Exception e)
     {
       rollback(connection);
