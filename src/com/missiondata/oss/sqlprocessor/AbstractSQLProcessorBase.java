@@ -35,6 +35,34 @@ import java.util.*;
  */
 abstract public class AbstractSQLProcessorBase
 {
+  static boolean HAS_LOG4J;
+  static
+  {
+    try
+    {
+      Class.forName("org.apache.log4j.Logger");
+      HAS_LOG4J=true;
+    }
+    catch (ClassNotFoundException e)
+    {
+      HAS_LOG4J=false;
+    }
+  }
+
+  static boolean HAS_JDKLOGGER;
+  static
+  {
+    try
+    {
+      Class.forName("java.util.logging.Logger");
+      HAS_JDKLOGGER=true;
+    }
+    catch (ClassNotFoundException e)
+    {
+      HAS_JDKLOGGER=false;
+    }
+  }
+
   /**
    * @param description will be used in logging statements
    * @param sqlText will be parsed into valid SQL
@@ -44,6 +72,15 @@ abstract public class AbstractSQLProcessorBase
     this.rawSQL = sqlText;
     this.taggedSQL = new TaggedSQL(sqlText);
     this.description = description;
+
+    if(HAS_LOG4J)
+    {
+      loggingImpl = new Log4jLoggingCapability();
+    }
+    else if(HAS_JDKLOGGER)
+    {
+      loggingImpl = new JavaJDKLoggingCapability();
+    }
   }
 
   /**
@@ -349,15 +386,6 @@ abstract public class AbstractSQLProcessorBase
     {
       return value.toString();
     }
-  }
-
-  /**
-   * If you just want to use the tagged sql syntax and pretty printing power of the sqlprocessor,
-   * Use this method instead of executes
-   */
-  public PreparedStatement getPreparedStatement(ConnectionSource connectionSource) throws SQLException
-  {
-    return getPreparedStatement(connectionSource.getConnection());
   }
 
   /**
