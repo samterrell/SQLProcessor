@@ -19,8 +19,6 @@ package com.missiondata.oss.sqlprocessor;
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-import com.missiondata.oss.sqlprocessor.LoggingCapability;
-
 public class Log4jLoggingCapability implements LoggingCapability
 {
   private org.apache.log4j.Logger logger = org.apache.log4j.Logger.getLogger("sqlprocessor");

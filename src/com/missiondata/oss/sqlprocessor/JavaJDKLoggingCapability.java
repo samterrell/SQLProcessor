@@ -1,5 +1,3 @@
-package com.missiondata.oss.sqlprocessor;
-
 /*
  * SQLProcessor - a facade for the JDBC API
  * Copyright (C) 2001-2003 Mission Data
@@ -18,8 +16,7 @@ package com.missiondata.oss.sqlprocessor;
  * License along with this library; if not, write to the Free
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
-import com.missiondata.oss.sqlprocessor.LoggingCapability;
+package com.missiondata.oss.sqlprocessor;
 
 public class JavaJDKLoggingCapability implements LoggingCapability
 {
