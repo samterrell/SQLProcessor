@@ -382,7 +382,6 @@ public class SQLProcessor
       {
         prepareStatement(preparedStatement);
 
-
         logStatement();
 
         if (taggedSQL.isQuery())
@@ -526,7 +525,7 @@ public class SQLProcessor
         int idx = ((Integer) i.next()).intValue();
         if (value instanceof SQLNull)
         {
-          preparedStatement.setNull(idx, ((SQLNull) value).type);
+          preparedStatement.setNull(idx, ((SQLNull) value).getType());
         }
         else
         {
@@ -569,56 +568,7 @@ public class SQLProcessor
 
   protected Object getValue(String key)
   {
-    Object value = parameterValues.get(key);
-    if (value == null)
-    {
-      String attemptedMethod = createGetterNameFromKey(key);
-
-      try
-      {
-        Method method = null;
-        try
-        {
-          method = bean.getClass().getMethod(attemptedMethod, null);
-          value = method.invoke(bean, null);
-        }
-        catch (NoSuchMethodException e)
-        {
-          logger.warning("method not found{" + attemptedMethod + "}");
-        }
-        if (value == null)
-        {
-          value = beanToNullType.get(key);
-        }
-        if (value == null && method != null)
-        {
-          Class ret = method.getReturnType();
-          if (ret != null)
-          {
-            value = convertClassToNullType(ret);
-          }
-        }
-      }
-      catch (Exception e)
-      {
-        logger.log(Level.SEVERE, "bean invocation exception for method{" + attemptedMethod + "}", e);
-        throw new IllegalArgumentException("The parameter |" + key + "| was not set\n" +
-          "SQL Description: " + description + "\n" +
-          "SQL: " + rawSQL);
-      }
-    }
-    return value;
-  }
-
-  protected Object convertClassToNullType(Class ret)
-  {
-    return classToNullType.get(ret.toString());
-  }
-
-  protected String createGetterNameFromKey(String key)
-  {
-    String attemptedMethod = "get" + key.substring(0, 1).toUpperCase() + key.substring(1);
-    return attemptedMethod;
+    return chainingParameterEvaluator.getParameterValue(this, parameterValues, key);
   }
 
   private Object getValueForLogging(String key)
@@ -703,7 +653,6 @@ public class SQLProcessor
     return preparedStatement;
   }
 
-
   private void closeResultSetandStatement(ResultSet rs, Statement stmt)
   {
     try
@@ -720,26 +669,6 @@ public class SQLProcessor
     catch (java.sql.SQLException ignore)
     {
       logger.log(Level.WARNING, "SQLException in cleaning up", ignore);
-    }
-  }
-
-  protected static class SQLNull
-  {
-    private int type;
-
-    SQLNull(int type)
-    {
-      this.type = type;
-    }
-
-    public int getType()
-    {
-      return type;
-    }
-
-    public String toString()
-    {
-      return "<null>";
     }
   }
 
@@ -786,11 +715,25 @@ public class SQLProcessor
     classToNullType.put(theClass.toString(), new SQLNull(type));
   }
 
+  public void addEvaluator(ParameterEvaluator evaluator)
+  {
+    chainingParameterEvaluator.addEvaluator(evaluator);
+  }
+
+  protected SQLNull convertBeanToNullType(String parameter)
+  {
+    return (SQLNull)beanToNullType.get(parameter);
+  }
+
+  protected SQLNull convertClassToNullType(Class ret)
+  {
+    return (SQLNull)classToNullType.get(ret.toString());
+  }
+
   private Logger logger = Logger.global;
   private List insertedIds = new LinkedList();
   protected TaggedSQL taggedSQL;
   private String rawSQL;
-  private Map parameterValues = new HashMap();
   private Object bean = EMPTYBEAN;
   private Iterator beanIterator;
   private Object result;
@@ -798,12 +741,68 @@ public class SQLProcessor
   private boolean setupOverridden = true;
   private boolean results;
 
+  private Map parameterValues = new HashMap();
   private Map beanToNullType = new HashMap();
   private Map classToNullType = new HashMap();
+
+  private ChainingParameterEvaluator chainingParameterEvaluator = new ChainingParameterEvaluator();
+  {
+    chainingParameterEvaluator.addEvaluator(new InternalDefaultParameterEvaluator());
+  }
 
   private static class EmptyBean extends Object
   {
   };
   protected static final EmptyBean EMPTYBEAN = new EmptyBean();
+
+  private class InternalDefaultParameterEvaluator implements ParameterEvaluator
+  {
+    public Object getParameterValue(SQLProcessor processor, Map context, String parameter) throws IllegalArgumentException
+    {
+      Object value = context.get(parameter);
+      if (value == null)
+      {
+        String attemptedMethod = createGetterNameFromKey(parameter);
+
+        try
+        {
+          Method method = null;
+          try
+          {
+            method = processor.bean.getClass().getMethod(attemptedMethod, null);
+            value = method.invoke(processor.bean, null);
+          }
+          catch (NoSuchMethodException e)
+          {
+          }
+          if (value == null)
+          {
+            value = beanToNullType.get(parameter);
+          }
+          if (value == null && method != null)
+          {
+            Class ret = method.getReturnType();
+            if (ret != null)
+            {
+              value = processor.convertClassToNullType(ret);
+            }
+          }
+        }
+        catch (Exception e)
+        {
+          throw new IllegalArgumentException("The parameter |" + parameter + "| was not set\n" +
+            "SQL Description: " + processor.getDescription() + "\n" +
+            "SQL: " + processor.getRawSQL());
+        }
+      }
+      return value;
+    }
+
+    protected String createGetterNameFromKey(String key)
+    {
+      String attemptedMethod = "get" + key.substring(0, 1).toUpperCase() + key.substring(1);
+      return attemptedMethod;
+    }
+  }
 
 }

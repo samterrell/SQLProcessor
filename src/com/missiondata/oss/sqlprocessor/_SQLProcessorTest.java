@@ -29,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Leslie Hensley
@@ -79,6 +80,25 @@ public class _SQLProcessorTest extends TestCase
     mockPreparedStatement.verify();
     mockConnection.verify();
     mockConnectionSource.verify();
+  }
+
+  public void testQueryParameter()
+  {
+    mockPreparedStatement.addResultSet(mockResultSet);
+    mockPreparedStatement.addExpectedSetParameter(1, "closed");
+    mockPreparedStatement.addExpectedSetParameter(2, "bar");
+    mockPreparedStatement.setExpectedExecuteCalls(1);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    SQLProcessor sqlProcessor = new SQLProcessor("SELECT id, job FROM #table# WHERE state = |state| AND name = |name|");
+    sqlProcessor.set("table", "foo");
+    sqlProcessor.set("state", "closed");
+    sqlProcessor.set("name", "bar");
+
+    sqlProcessor.execute(mockConnectionSource);
   }
 
   public void testQueryRepeatedParameter()
@@ -524,6 +544,34 @@ public class _SQLProcessorTest extends TestCase
     mockConnectionSource.verify();
   }
 
+  public void testChainingParameterEvaluator()
+  {
+    mockPreparedStatement.addResultSet(mockResultSet);
+    mockPreparedStatement.addExpectedSetParameter(1, "closed");
+    mockPreparedStatement.addExpectedSetParameter(2, "bar");
+    mockPreparedStatement.setExpectedExecuteCalls(1);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    ParameterEvaluator testingEvaluator = new ParameterEvaluator()
+    {
+      public Object getParameterValue(SQLProcessor processor, Map context, String parameter)
+      {
+        return "closed";
+      }
+    };
+
+    SQLProcessor sqlProcessor = new SQLProcessor("SELECT id, job FROM #table# WHERE state = |state| AND name = |name|");
+    sqlProcessor.addEvaluator(testingEvaluator);
+    sqlProcessor.set("table", "foo");
+    sqlProcessor.set("name", "bar");
+
+    sqlProcessor.execute(mockConnectionSource);
+  }
+
+
   private void setAndExecute(SQLProcessor sqlProcessor, ConnectionSource connectionSource)
   {
     sqlProcessor.set("table", "foo");
@@ -532,7 +580,6 @@ public class _SQLProcessorTest extends TestCase
 
     sqlProcessor.execute(connectionSource);
   }
-
 
   private void verifyAll()
   {
