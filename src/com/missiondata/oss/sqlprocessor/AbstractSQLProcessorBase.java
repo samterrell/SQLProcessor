@@ -291,7 +291,7 @@ abstract public class AbstractSQLProcessorBase
 
   protected Object getValue(String parameter)
   {
-    return chainingParameterEvaluator.getParameterValue(parameter);
+    return chainingParameterEvaluator.getParameterValue(parameter, null);
   }
 
   private Object getValueForLogging(String key)

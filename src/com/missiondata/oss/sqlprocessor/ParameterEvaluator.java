@@ -40,5 +40,5 @@ public interface ParameterEvaluator
    * @param parameter the text between || that requires transformation
    * @return object value, an SQLNull instance,
    */
-  Object getParameterValue(String parameter);
+  Object getParameterValue(String parameter, Object suggestedValue);
 }

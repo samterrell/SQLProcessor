@@ -34,6 +34,6 @@ public class SQLNull
 
   public String toString()
   {
-    return "<null>";
+    return "<null__"+type+">";
   }
 }

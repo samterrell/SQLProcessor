@@ -341,7 +341,7 @@ public class SQLProcessor extends AbstractSQLProcessorBase
 
   private class InternalDefaultParameterEvaluator implements ParameterEvaluator
   {
-    public Object getParameterValue(String parameter) throws IllegalArgumentException
+    public Object getParameterValue(String parameter, Object suggestedValue) throws IllegalArgumentException
     {
       Object value = parameterValues.get(parameter);
       if (value == null)

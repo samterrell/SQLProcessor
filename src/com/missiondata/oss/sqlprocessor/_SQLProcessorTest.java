@@ -564,9 +564,16 @@ public class _SQLProcessorTest extends TestCase
 
     ParameterEvaluator testingEvaluator = new ParameterEvaluator()
     {
-      public Object getParameterValue(String parameter)
+      public Object getParameterValue(String parameter, Object suggestedValue)
       {
-        return "closed";
+        if(suggestedValue==null)
+        {
+          return "closed";
+        }
+        else
+        {
+          return suggestedValue;
+        }
       }
     };
 
@@ -580,14 +587,35 @@ public class _SQLProcessorTest extends TestCase
 
   public class Bean
   {
+    private String state;
+    private String name;
+    private int distance;
+
+    public Bean()
+    {
+      this("closed","bar",1);
+    }
+
+    public Bean(String state, String name, int distance)
+    {
+      this.state = state;
+      this.name = name;
+      this.distance = distance;
+    }
+
     public String getState()
     {
-      return "closed";
+      return state;
     }
 
     public String getName()
     {
-      return "bar";
+      return name;
+    }
+
+    public int getDistance()
+    {
+      return distance;
     }
   };
 
@@ -608,6 +636,44 @@ public class _SQLProcessorTest extends TestCase
 
     sqlProcessor.execute(mockConnectionSource);
   }
+
+  public void testBeanShellParameterEvaluatorWithNull()
+  {
+    mockPreparedStatement.addResultSet(mockResultSet);
+    mockPreparedStatement.addExpectedSetParameter(1, null);
+    mockPreparedStatement.addExpectedSetParameter(2, null);
+    mockPreparedStatement.setExpectedExecuteCalls(1);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    ParameterEvaluator mockParameterEvaluator = new ParameterEvaluator()
+    {
+      public Object getParameterValue(String parameter, Object suggestedValue)
+      {
+        if("dbdbean.state".equals(parameter))
+        {
+          assertEquals("expected nulltype",((SQLNull)suggestedValue).getType(),java.sql.Types.CHAR);
+        }
+
+        if("dbdbean.name".equals(parameter))
+        {
+          assertEquals("expected null",((SQLNull)suggestedValue).getType(),java.sql.Types.OTHER);
+        }
+
+        return suggestedValue;
+      }
+    };
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing","SELECT id, job FROM #table# WHERE state = |dbdbean.state| AND name = |(Object)dbdbean.name|");
+    sqlProcessor.addEvaluator(mockParameterEvaluator);
+    sqlProcessor.set("dbdbean", new Bean(null,null,5));
+    sqlProcessor.set("table","foo");
+
+    sqlProcessor.execute(mockConnectionSource);
+  }
+
 
   public void testBeanShellParameterEvaluatorWithIterator()
   {

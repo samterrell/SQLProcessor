@@ -21,6 +21,7 @@ package com.missiondata.oss.sqlprocessor;
 import com.missiondata.oss.exception.SystemException;
 
 import java.util.Iterator;
+import java.sql.Types;
 
 /**
  * Support for multiple beans, a named bean iterator, and
@@ -91,6 +92,11 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
   {
     private bsh.Interpreter interpreter = new bsh.Interpreter();
 
+    public BeanShellParameterEvaluator()
+    {
+      set("__nullFilter",new NullTypeFilter());
+    }
+
     public void set(String key, Object value)
     {
       try
@@ -103,12 +109,16 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
       }
     }
 
-    public Object getParameterValue(String parameter)
+    public Object getParameterValue(String parameter, Object suggestedValue)
     {
       Object val = null;
       try
       {
         val = interpreter.eval(parameter);
+        if(val==null)
+        {
+          val = interpreter.eval("__nullFilter.nullFor("+parameter+")");
+        }
       }
       catch (bsh.EvalError evalError)
       {
@@ -118,4 +128,21 @@ public class MultiBeanSQLProcessor extends AbstractSQLProcessorBase
     }
   }
 
+  public static class NullTypeFilter
+  {
+    public SQLNull nullFor(Object o) { return new SQLNull(Types.OTHER); };
+    public SQLNull nullFor(String s) { return new SQLNull(Types.CHAR); };
+    public SQLNull nullFor(java.math.BigDecimal b) { return new SQLNull(Types.NUMERIC); };
+    public SQLNull nullFor(Boolean b) { return new SQLNull(Types.BIT); };
+    public SQLNull nullFor(Byte b) { return new SQLNull(Types.TINYINT); };
+    public SQLNull nullFor(Short s) { return new SQLNull(Types.SMALLINT); };
+    public SQLNull nullFor(Integer i) { return new SQLNull(Types.INTEGER); };
+    public SQLNull nullFor(Long l) { return new SQLNull(Types.BIGINT); };
+    public SQLNull nullFor(Float f) { return new SQLNull(Types.REAL); };
+    public SQLNull nullFor(Double d) { return new SQLNull(Types.DOUBLE); };
+    public SQLNull nullFor(byte[] b) { return new SQLNull(Types.LONGVARBINARY); };
+    public SQLNull nullFor(java.util.Date d) { return new SQLNull(Types.DATE); };
+  }
 }
+
+
