@@ -20,8 +20,13 @@ package com.missiondata.oss.sqlprocessor;
 
 
 import java.math.BigInteger;
-import java.sql.*;
-import java.util.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Base functionality for various SQLProcessor implementations. Allows for the
@@ -161,6 +166,17 @@ abstract public class AbstractSQLProcessorBase
   public void addEvaluator(ParameterEvaluator evaluator)
   {
     chainingParameterEvaluator.addEvaluator(evaluator);
+  }
+
+  /**
+   * Runs the update, insert or query that was specified in the constructor.
+   *
+   * @param dataSourceJndiName - the JNDI name of a DataSource that the sql will act on
+   * @return
+   */
+  public int execute(String dataSourceJndiName)
+  {
+    return execute(new DataSourceConnectionSource(dataSourceJndiName));
   }
 
   /**
