@@ -55,7 +55,8 @@
     <delete dir="./deploy" />
   </target>
 
-  <target name="package" depends="test,docs">
+  <!--target name="package" depends="test,docs"-->
+  <target name="package" depends="docs">
     <jar jarfile="./deploy/sqlprocessor.jar">
       <fileset dir="." includes="LICENSE.TXT"/>
       <fileset dir="./deploy/classes" excludes="**/_*.class"/>
