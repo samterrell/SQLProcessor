@@ -111,6 +111,14 @@ public class SQLTransaction
     }
   }
 
+  /**
+   * @param dataSourceJndiName - the JNDI name of a DataSource that the sql will act on
+   */
+  public void execute(String dataSourceJndiName)
+  {
+    execute(new DataSourceConnectionSource(dataSourceJndiName));
+  }
+
   public void execute(ConnectionSource connectionSource)
   {
     Connection connection = null;

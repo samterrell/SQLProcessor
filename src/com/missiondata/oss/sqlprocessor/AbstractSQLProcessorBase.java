@@ -323,7 +323,14 @@ abstract public class AbstractSQLProcessorBase
 
   protected Object getValue(String parameter)
   {
-    return chainingParameterEvaluator.getParameterValue(parameter, null);
+    Object value = chainingParameterEvaluator.getParameterValue(parameter, null);
+    if(value == null)
+    {
+      throw new IllegalArgumentException("The parameter |" + parameter + "| was not set\n" +
+        "SQL Description: " + getDescription() + "\n" +
+        "SQL: " + getRawSQL());
+    }
+    return value;
   }
 
   private Object getValueForLogging(String key)

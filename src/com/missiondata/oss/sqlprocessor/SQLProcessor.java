@@ -22,7 +22,7 @@ package com.missiondata.oss.sqlprocessor;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.*;
+import java.sql.Types;
 import java.util.*;
 
 /**
@@ -374,9 +374,7 @@ public class SQLProcessor extends AbstractSQLProcessorBase
         }
         catch (Exception e)
         {
-          throw new IllegalArgumentException("The parameter |" + parameter + "| was not set\n" +
-            "SQL Description: " + SQLProcessor.this.getDescription() + "\n" +
-            "SQL: " + SQLProcessor.this.getRawSQL());
+          return null;
         }
       }
       return value;
