@@ -56,7 +56,7 @@
   </target>
 
   <!--target name="package" depends="test,docs"-->
-  <target name="package" depends="docs">
+  <target name="package" depends="compile,docs">
     <jar jarfile="./deploy/sqlprocessor.jar">
       <fileset dir="." includes="LICENSE.TXT"/>
       <fileset dir="./deploy/classes" excludes="**/_*.class"/>
