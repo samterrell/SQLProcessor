@@ -36,12 +36,13 @@ public class ChainingParameterEvaluator implements ParameterEvaluator
 
   public Object getParameterValue(String parameter, Object suggestedValue)
   {
-    Object retVal = null;
+    Object retVal = suggestedValue;
     for (Iterator i = chainedEvaluators.iterator(); i.hasNext();)
     {
       ParameterEvaluator evaluator = (ParameterEvaluator) i.next();
       retVal = evaluator.getParameterValue(parameter, retVal);
     }
+
     return retVal;
   }
 }
