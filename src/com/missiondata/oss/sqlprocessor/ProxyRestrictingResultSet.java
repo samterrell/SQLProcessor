@@ -26,10 +26,20 @@ import java.util.HashSet;
 import java.sql.ResultSet;
 
 /**
+ * Wraps a {@link ResultSet} instance so that use of some methods
+ * can be restricted when required.
+ *
  * @author Darren Day
  */
 public class ProxyRestrictingResultSet implements InvocationHandler
 {
+  /**
+   * Tagging interface indicating that this ResultSet has some methods
+   * have been restricted.
+   *
+   * Calls to {@link java.sql.ResultSet#next}, {@link java.sql.ResultSet#previous}, and
+   * {@link ResultSet#close} will throw {@link java.lang.UnsupportedOperationException}
+   */
   public static interface RestrictedResultSet extends ResultSet{}
 
   private static Set restrictedMethods = new HashSet();
@@ -42,6 +52,15 @@ public class ProxyRestrictingResultSet implements InvocationHandler
 
   private ResultSet impl;
 
+  /**
+   * Wraps the resultset so that some methods cannot be called.
+   *
+   * Calls to {@link ResultSet#next}, {@link ResultSet#previous}, and
+   * {@link ResultSet#close} will result in an {@link UnsupportedOperationException}
+   *
+   * @param resultSetToRestrict
+   * @return
+   */
   public static RestrictedResultSet restrict(ResultSet resultSetToRestrict)
   {
     return (RestrictedResultSet) Proxy.newProxyInstance
