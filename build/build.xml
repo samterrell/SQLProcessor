@@ -35,6 +35,7 @@
       <fileset dir="." includes="LICENSE.TXT"/>
       <fileset dir="./deploy/classes" excludes="**/_*.class"/>
     </jar>
+    <copy file="./lib/bsh-core-2.0b1.jar" todir="./deploy"/>
   </target>
 
   <target name="test" depends="compile">

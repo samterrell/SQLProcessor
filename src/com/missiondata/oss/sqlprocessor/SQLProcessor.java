@@ -24,8 +24,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.*;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * sqlprocessor is a facade for parts of the JDBC API.  It hides much of the complexity
@@ -72,7 +70,7 @@ import java.util.logging.Logger;
 
  * @author Leslie Hensley
  */
-public class SQLProcessor
+public class SQLProcessor extends AbstractSQLProcessorBase
 {
   /**
    * @param description       the description is included in the messages of exceptions and
@@ -86,9 +84,7 @@ public class SQLProcessor
    */
   public SQLProcessor(String description, String sqlText)
   {
-    this.rawSQL = sqlText;
-    this.taggedSQL = new TaggedSQL(sqlText);
-    this.description = description;
+    super(description,sqlText);
     setBean(singletonIterator(new Object()));
   }
 
@@ -230,131 +226,19 @@ public class SQLProcessor
     this.beanIterator = beanIterator;
   }
 
-  /**
-   * Tests if results were returned from the query.
-   *
-   * @return true if at least one row is returned from the query, otherwise
-   *  false
-   */
-  public boolean resultsExist()
+  protected boolean isSetUp()
   {
-    return results;
-  }
+    Iterator beanIt = getBeanIterator();
 
-  /**
-   * For when only a single value is needed as the result of a query
-   *
-   * @return the first column of the last row returned by the query
-   */
-  public Object getSingleResult()
-  {
-    return result;
-  }
-
-  /**
-   * A convenience method that test rhs for equality with the first column
-   * of the last row returned by the query
-   *
-   * @return false if no rows are returned from the query or if the first
-   *  column returned from the query is not <code>.equals</code>
-   */
-  public boolean isSingleResultEqual(Object rhs)
-  {
-    return resultsExist() && rhs.equals(getSingleResult());
-  }
-
-  /**
-   * Should be overriden to process the results of queries.  Note that the
-   * result set is iterated over by this class, so the <code>next</code> and <code>close</code>
-   * methods should never be called on <code>resultSet</code>
-   *
-   * This method is called if a ResultSet exists, otherwise another
-   * process method is called.
-   *
-   * @see #process(int rowsUpdated)
-   * @see #process(int rowsUpdated, java.math.BigInteger insertedId)
-   */
-  protected void process(ResultSet resultSet) throws SQLException
-  {
-    result = resultSet.getObject(1);
-  }
-
-  /** Should be overridden to process the results of insertions.
-   *
-   * This method is called if no ResultSet or insertion id was
-   * available during processing
-   *
-   * @see #process(java.sql.ResultSet resultSet)
-   * @see #process(int rowsUpdated, java.math.BigInteger insertedId)
-   */
-  protected void process(int rowsUpdated) throws SQLException
-  {
-  }
-
-  /** Should be overridden to process the results of insertions.
-   *
-   * This method is called if there are no resultsets, and an
-   * insertion id was available during processing.
-   *
-   * @see #process(int rowsUpdated)
-   * @see #process(java.sql.ResultSet resultSet)
-
-   */
-  protected void process(int rowsUpdated, BigInteger insertedId) throws SQLException
-  {
-  }
-
-  /**
-   * Should be overriden if sql needs to be executed more than one time and
-   * finer grain control is needed than that provided by <code>setBean</code>.
-   * True should be returned as long as the sql should be executed.
-   * For example:
-   * <pre>
-   * final iterator = idList.iterator();
-   * sqlprocessor sqlProcessor =
-   *   new sqlprocessor( user.getDefaultSource(), "update foo set state = |state| where id = |id|" )
-   *   {
-   *     protected boolean setUp()
-   *     {
-   *       if( iterator.hasNext() )
-   *       {
-   *         Integer id = (Integer)iterator.next();
-   *         sqlProcessor.set( "id", id );
-   *         sqlProcessor.set( "state", doSomethingComplex(id) );
-   *         return true;
-   *       }
-   *       else
-   *       {
-   *         return false;
-   *       }
-   *     }
-   *   };
-   * sqlProcessor.execute();;
-   * </pre>
-   */
-  protected boolean setUp()
-  {
-    setupOverridden = false;
-    return true;
-  }
-
-  /**
-   * Should be used if a transaction is needed across multiple interactions
-   * with the database.
-   */
-  public int execute(final Connection connection) throws SQLSystemException
-  {
-    return execute(new ConnectionSource()
+    if (beanIt.hasNext())
     {
-      public Connection getConnection()
-      {
-        return connection;
-      }
-
-      public void returnConnection(Connection c)
-      {
-      }
-    });
+      setCurrentBean(beanIt.next());
+      return setUp();
+    }
+    else
+    {
+      return super.isSetUp();
+    }
   }
 
   /**
@@ -364,129 +248,8 @@ public class SQLProcessor
    */
   public int execute(ConnectionSource connectionSource) throws SQLSystemException
   {
-    int rowsUpdated = 0;
-    setupOverridden = true;
-
     bean = EMPTYBEAN;
-
-    result = null;
-    Connection connection = connectionSource.getConnection();
-    PreparedStatement preparedStatement = null;
-
-    ResultSet resultSet = null;
-    try
-    {
-      preparedStatement = connection.prepareStatement(taggedSQL.getPreparedString());
-
-      while (nextBean())
-      {
-        prepareStatement(preparedStatement);
-
-        logStatement();
-
-        if (taggedSQL.isQuery())
-        {
-          resultSet = preparedStatement.executeQuery();
-
-          if (resultSet != null)
-          {
-            RestrictedResultSet restrictedResultSet = new RestrictedResultSet(resultSet);
-            while (resultSet.next())
-            {
-              results = true;
-              process(restrictedResultSet);
-            }
-          }
-        }
-        else
-        {
-          int rowsUpdatedHere = preparedStatement.executeUpdate();
-          if (taggedSQL.isInsert())
-          {
-            checkForInsertedId(connection, rowsUpdatedHere);
-          }
-          else
-          {
-            process(rowsUpdatedHere);
-          }
-          rowsUpdated += rowsUpdatedHere;
-        }
-      }
-      return rowsUpdated;
-    }
-    catch (SQLException e)
-    {
-      throw new SQLSystemException("SQL Description: " + description + "\n" +
-        "SQL: " + getSQLText(), e);
-    }
-    finally
-    {
-      closeResultSetandStatement(resultSet, preparedStatement);
-      connectionSource.returnConnection(connection);
-    }
-  }
-
-  private void checkForInsertedId(Connection conn, int rowsUpdated) throws SQLException
-  {
-    BigInteger id = fetchLastInsertedId(conn);
-    if (id != null)
-    {
-      insertedIds.add(id);
-      process(rowsUpdated, id);
-    }
-    else
-    {
-      process(rowsUpdated);
-    }
-  }
-
-  /**
-   * Get the id of the last item inserted into the table.
-   * If not implemented by a derived class, a null is always
-   * returned and no inserted ids are tracked during execution.
-   *
-   * @see #getInsertedIds()
-   * @see #getLastInsertedId()
-   *
-   */
-  protected BigInteger fetchLastInsertedId(Connection conn)
-  {
-    return null;
-  }
-
-
-  /**
-   * Get array of ids that were inserted during this sqlprocessor's
-   * execution. An empty array is returned if no inserted ids were
-   * encountered during processing.
-   *
-   * @see #fetchLastInsertedId(java.sql.Connection))
-   * @see #getLastInsertedId()
-   *
-   */
-  public BigInteger[] getInsertedIds()
-  {
-    return (BigInteger[]) insertedIds.toArray(new BigInteger[insertedIds.size()]);
-  }
-
-  /**
-   * Get last id that was inserted during this sqlprocessor's
-   * execution. Null is returned if no inserted ids were
-   * encountered during processing.
-   *
-   * @see #fetchLastInsertedId(java.sql.Connection))
-   * @see #getInsertedIds()
-   *
-   */
-  public BigInteger getLastInsertedId()
-  {
-    BigInteger last = null;
-    if (getInsertedIds().length > 0)
-    {
-      last = getInsertedIds()[getInsertedIds().length - 1];
-    }
-
-    return last;
+    return super.execute(connectionSource);
   }
 
   /**
@@ -505,37 +268,6 @@ public class SQLProcessor
     return lastVal;
   }
 
-  private void prepareStatement(PreparedStatement preparedStatement) throws SQLException
-  {
-    Iterator iterator = taggedSQL.getParameterKeys();
-    while (iterator.hasNext())
-    {
-      String key = (String) iterator.next();
-      Object value = getValue(key);
-
-      if (value == null)
-      {
-        throw new IllegalArgumentException("The parameter |" + key + "| was not set\n" +
-          "SQL Description: " + description + "\n" +
-          "SQL: " + rawSQL);
-      }
-
-      for (Iterator i = taggedSQL.getParameterIndices(key).iterator(); i.hasNext();)
-      {
-        int idx = ((Integer) i.next()).intValue();
-        if (value instanceof SQLNull)
-        {
-          preparedStatement.setNull(idx, ((SQLNull) value).getType());
-        }
-        else
-        {
-          preparedStatement.setObject(idx, value);
-        }
-      }
-    }
-  }
-
-
   protected boolean isEmptyBean()
   {
     return this.bean instanceof EmptyBean;
@@ -551,125 +283,9 @@ public class SQLProcessor
     this.bean = bean;
   }
 
-  protected boolean nextBean()
-  {
-    Iterator beanIt = getBeanIterator();
-
-    if (beanIt.hasNext())
-    {
-      setCurrentBean(beanIt.next());
-      return setUp();
-    }
-    else
-    {
-      return setUp() && setupOverridden;
-    }
-  }
-
   protected Object getValue(String key)
   {
-    return chainingParameterEvaluator.getParameterValue(this, parameterValues, key);
-  }
-
-  private Object getValueForLogging(String key)
-  {
-    Object value = null;
-    try
-    {
-      value = getValue(key);
-    }
-
-    catch (IllegalArgumentException e)
-    {
-      value = "!SET{" + key + "}!";
-    }
-
-    return value;
-  }
-
-  private String getSQLText()
-  {
-    StringBuffer sqlText = new StringBuffer(taggedSQL.getPreparedStringForLogging());
-    StringBuffer output = new StringBuffer(sqlText.length());
-    int parameterIndex = 1;
-    for (int i = 0; i < sqlText.length(); i++)
-    {
-      if (sqlText.charAt(i) == '?')
-      {
-        output.append(prettyParameter(getValueForLogging(taggedSQL.getParameterKey(parameterIndex++))));
-      }
-      else
-      {
-        output.append(sqlText.charAt(i));
-      }
-    }
-    return output.toString();
-  }
-
-  private void logStatement()
-  {
-    if (logger.isLoggable(Level.INFO))
-    {
-      logger.fine(prettyPrint());
-    }
-  }
-
-  public String prettyPrint()
-  {
-    return description + ": " + getSQLText();
-  }
-
-  private String prettyParameter(Object value)
-  {
-    if (!(value instanceof Number))
-    {
-      return "'" + value + "'";
-    }
-    else
-    {
-      return value.toString();
-    }
-  }
-
-  /**
-   * If you just want to use the tagged sql syntax and pretty printing power of the sqlprocessor,
-   * Use this method instead of executes
-   */
-  public PreparedStatement getPreparedStatement(ConnectionSource connectionSource) throws SQLException
-  {
-    return getPreparedStatement(connectionSource.getConnection());
-  }
-
-  /**
-   * If you just want to use the tagged sql syntax and pretty printing power of the sqlprocessor,
-   * Use this method instead of executes
-   */
-  public PreparedStatement getPreparedStatement(Connection connection) throws SQLException
-  {
-    PreparedStatement preparedStatement = connection.prepareStatement(taggedSQL.getPreparedString());
-    prepareStatement(preparedStatement);
-    logStatement();
-
-    return preparedStatement;
-  }
-
-  private void closeResultSetandStatement(ResultSet rs, Statement stmt)
-  {
-    try
-    {
-      if (rs != null)
-      {
-        rs.close();
-      }
-      if (stmt != null)
-      {
-        stmt.close();
-      }
-    }
-    catch (java.sql.SQLException ignore)
-    {
-      logger.log(Level.WARNING, "SQLException in cleaning up", ignore);
-    }
+    return chainingParameterEvaluator.getParameterValue(key);
   }
 
   protected Iterator getBeanIterator()
@@ -685,16 +301,6 @@ public class SQLProcessor
   protected boolean hasParameterKey(String key)
   {
     return parameterValues.containsKey(key);
-  }
-
-  protected String getDescription()
-  {
-    return description;
-  }
-
-  protected String getRawSQL()
-  {
-    return rawSQL;
   }
 
   public void setNullType(String[] params, int type)
@@ -730,16 +336,8 @@ public class SQLProcessor
     return (SQLNull)classToNullType.get(ret.toString());
   }
 
-  private Logger logger = Logger.global;
-  private List insertedIds = new LinkedList();
-  protected TaggedSQL taggedSQL;
-  private String rawSQL;
   private Object bean = EMPTYBEAN;
   private Iterator beanIterator;
-  private Object result;
-  private String description;
-  private boolean setupOverridden = true;
-  private boolean results;
 
   private Map parameterValues = new HashMap();
   private Map beanToNullType = new HashMap();
@@ -757,9 +355,9 @@ public class SQLProcessor
 
   private class InternalDefaultParameterEvaluator implements ParameterEvaluator
   {
-    public Object getParameterValue(SQLProcessor processor, Map context, String parameter) throws IllegalArgumentException
+    public Object getParameterValue(String parameter) throws IllegalArgumentException
     {
-      Object value = context.get(parameter);
+      Object value = parameterValues.get(parameter);
       if (value == null)
       {
         String attemptedMethod = createGetterNameFromKey(parameter);
@@ -769,8 +367,8 @@ public class SQLProcessor
           Method method = null;
           try
           {
-            method = processor.bean.getClass().getMethod(attemptedMethod, null);
-            value = method.invoke(processor.bean, null);
+            method = SQLProcessor.this.bean.getClass().getMethod(attemptedMethod, null);
+            value = method.invoke(SQLProcessor.this.bean, null);
           }
           catch (NoSuchMethodException e)
           {
@@ -784,15 +382,15 @@ public class SQLProcessor
             Class ret = method.getReturnType();
             if (ret != null)
             {
-              value = processor.convertClassToNullType(ret);
+              value = SQLProcessor.this.convertClassToNullType(ret);
             }
           }
         }
         catch (Exception e)
         {
           throw new IllegalArgumentException("The parameter |" + parameter + "| was not set\n" +
-            "SQL Description: " + processor.getDescription() + "\n" +
-            "SQL: " + processor.getRawSQL());
+            "SQL Description: " + SQLProcessor.this.getDescription() + "\n" +
+            "SQL: " + SQLProcessor.this.getRawSQL());
         }
       }
       return value;

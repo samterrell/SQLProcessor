@@ -14,9 +14,18 @@ Library General Public License for more details.
 You should have received a copy of the GNU Library General Public
 License along with this library; if not, write to the Free
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+---
+Some bean supported provided by version 2.0b1 of BeanShell, http://www.beanshell.org
+
+By default, SQLProcessor.jar is packaged and depends on BeanShell.
+
+BeanShell is offered under a dual license--Sun Public License & LGPL. We
+choose the LGPL license.
 
 ---
 Some included unit testing uses MockObjects v5, http://mockobjects.com/
+
+MockObjects is not required for the SQLProcessor.jar file.
 
 /* ====================================================================
  * The Apache Software License, Version 1.1

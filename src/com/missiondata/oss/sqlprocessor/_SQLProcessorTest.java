@@ -29,7 +29,6 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author Leslie Hensley
@@ -43,13 +42,7 @@ public class _SQLProcessorTest extends TestCase
 
   public void setUp()
   {
-    Object[][] values = new Object[][]{{new Integer(5), "mowing"}, {new Integer(7), "painting"}};
-    mockResultSet = new MockMultiRowResultSet();
-    mockResultSet.setupColumnNames(new String[]{"id", "job"});
-    mockResultSet.setupRows(values);
-    mockResultSet.setExpectedNextCalls(3);
-    mockResultSet.setExpectedCloseCalls(1);
-
+    mockResultSet = createMockResultSet();
     mockPreparedStatement = new _MockPreparedStatement();
     mockPreparedStatement.setExpectedExecuteCalls(1);
     mockPreparedStatement.setExpectedCloseCalls(1);
@@ -59,6 +52,18 @@ public class _SQLProcessorTest extends TestCase
     mockConnectionSource = new _MockConnectionSource(mockConnection);
     mockConnectionSource.setExpectedGetConnectionCalls(1);
     mockConnectionSource.setExpectedReturnConnectionCalls(1);
+  }
+
+  private MockMultiRowResultSet createMockResultSet()
+  {
+    Object[][] values = new Object[][]{{new Integer(5), "mowing"}, {new Integer(7), "painting"}};
+    MockMultiRowResultSet mockResultSet = new MockMultiRowResultSet();
+    mockResultSet.setupColumnNames(new String[]{"id", "job"});
+    mockResultSet.setupRows(values);
+    mockResultSet.setExpectedNextCalls(3);
+    mockResultSet.setExpectedCloseCalls(1);
+
+    return mockResultSet;
   }
 
   public void testUpdate() throws SystemException
@@ -557,7 +562,7 @@ public class _SQLProcessorTest extends TestCase
 
     ParameterEvaluator testingEvaluator = new ParameterEvaluator()
     {
-      public Object getParameterValue(SQLProcessor processor, Map context, String parameter)
+      public Object getParameterValue(String parameter)
       {
         return "closed";
       }
@@ -571,6 +576,80 @@ public class _SQLProcessorTest extends TestCase
     sqlProcessor.execute(mockConnectionSource);
   }
 
+  public class Bean
+  {
+    public String getState()
+    {
+      return "closed";
+    }
+
+    public String getName()
+    {
+      return "bar";
+    }
+  };
+
+  public void testBeanShellParameterEvaluator()
+  {
+    mockPreparedStatement.addResultSet(mockResultSet);
+    mockPreparedStatement.addExpectedSetParameter(1, "closed");
+    mockPreparedStatement.addExpectedSetParameter(2, "bar");
+    mockPreparedStatement.setExpectedExecuteCalls(1);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing","SELECT id, job FROM #table# WHERE state = |dbdbean.getState()| AND name = |dbdbean.getName()|");
+    sqlProcessor.set("dbdbean", new Bean());
+    sqlProcessor.set("table","foo");
+
+    sqlProcessor.execute(mockConnectionSource);
+  }
+
+  public void testBeanShellParameterEvaluatorWithIterator()
+  {
+    MockMultiRowResultSet res1 = createMockResultSet();
+    mockPreparedStatement.addResultSet(res1);
+
+    MockMultiRowResultSet res2 = createMockResultSet();
+    mockPreparedStatement.addResultSet(res2);
+
+    MockMultiRowResultSet res3 = createMockResultSet();
+    mockPreparedStatement.addResultSet(res3);
+
+    mockPreparedStatement.addExpectedSetParameter(1, "closed");
+    mockPreparedStatement.addExpectedSetParameter(2, "STEVE");
+    mockPreparedStatement.addExpectedSetParameter(2, "RICH");
+    mockPreparedStatement.addExpectedSetParameter(2, "LESLIE");
+
+    mockPreparedStatement.setExpectedExecuteCalls(3);
+    mockPreparedStatement.setExpectedCloseCalls(1);
+
+    mockConnection.addExpectedPreparedStatementString("SELECT id, job FROM foo WHERE state = ? AND name = ?");
+    mockConnection.addExpectedPreparedStatement(mockPreparedStatement);
+
+    java.util.List names = new LinkedList();
+
+    names.add("Steve");
+    names.add("Rich");
+    names.add("Leslie");
+
+    MultiBeanSQLProcessor sqlProcessor = new MultiBeanSQLProcessor("testing", "SELECT id, job FROM #table# WHERE state = |dbdbean.state| AND name = |name.toUpperCase()|");
+
+    sqlProcessor.setIteratedBean("name", names.iterator());
+    sqlProcessor.set("dbdbean", new Bean());
+    sqlProcessor.set("table", "foo");
+
+    sqlProcessor.execute(mockConnectionSource);
+
+    res1.verify();
+    res2.verify();
+    res3.verify();
+    mockPreparedStatement.verify();
+    mockConnection.verify();
+    mockConnectionSource.verify();
+  }
 
   private void setAndExecute(SQLProcessor sqlProcessor, ConnectionSource connectionSource)
   {

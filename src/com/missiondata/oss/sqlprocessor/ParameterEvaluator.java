@@ -37,9 +37,8 @@ public interface ParameterEvaluator
    *
    * @see SQLNull
    * @param processor the current SQLProcessor needing parameter substitution
-   * @param context the context SQLProcessor has been given by the user
-   * @param parameter the text between || or ## that requires transformation
+   * @param parameter the text between || that requires transformation
    * @return object value, an SQLNull instance,
    */
-  Object getParameterValue(SQLProcessor processor, java.util.Map context, String parameter);
+  Object getParameterValue(String parameter);
 }

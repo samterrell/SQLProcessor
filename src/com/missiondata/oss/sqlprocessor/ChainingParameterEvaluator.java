@@ -35,13 +35,13 @@ public class ChainingParameterEvaluator implements ParameterEvaluator
     }
   }
 
-  public Object getParameterValue(SQLProcessor processor, Map context, String parameter)
+  public Object getParameterValue(String parameter)
   {
     Object retVal = null;
     for (Iterator i = chainedEvaluators.iterator(); i.hasNext();)
     {
       ParameterEvaluator evaluator = (ParameterEvaluator) i.next();
-      retVal = evaluator.getParameterValue(processor, context, parameter);
+      retVal = evaluator.getParameterValue(parameter);
 
       if(retVal!=null)
       {
