@@ -16,13 +16,12 @@
  * License along with this library; if not, write to the Free
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
 package com.missiondata.oss.sqlprocessor;
 
 import java.sql.Connection;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class LeakTrackingConnectionSource implements ConnectionSource
 {
@@ -63,5 +62,10 @@ public class LeakTrackingConnectionSource implements ConnectionSource
   public Collection getOutstandingStackTraces()
   {
     return outstandingConnectionsToStackTraces.values();
+  }
+
+  public ConnectionSource getDelegated()
+  {
+    return delegated;
   }
 }
