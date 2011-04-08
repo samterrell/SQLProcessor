@@ -19,6 +19,8 @@
 package com.missiondata.oss.sqlprocessor;
 
 import java.sql.*;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  * @author Steven Yelton
@@ -151,12 +153,12 @@ public class TransactionConnection implements Connection
     return connection.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
   }
 
-  public java.util.Map getTypeMap() throws SQLException
+  public Map<String,Class<?>> getTypeMap() throws SQLException
   {
     return connection.getTypeMap();
   }
 
-  public void setTypeMap(java.util.Map map) throws SQLException
+  public void setTypeMap(Map<String,Class<?>> map) throws SQLException
   {
     connection.setTypeMap(map);
   }
@@ -225,5 +227,70 @@ throws SQLException
 throws SQLException
   {
     return connection.prepareStatement(sql, columnNames);
+  }
+
+  public Clob createClob() throws SQLException
+  {
+    return connection.createClob();
+  }
+
+  public Blob createBlob() throws SQLException
+  {
+    return connection.createBlob();
+  }
+
+  public NClob createNClob() throws SQLException
+  {
+    return connection.createNClob();
+  }
+
+  public SQLXML createSQLXML() throws SQLException
+  {
+    return connection.createSQLXML();
+  }
+
+  public boolean isValid(int timeout) throws SQLException
+  {
+    return connection.isValid(timeout);
+  }
+
+  public void setClientInfo(String name, String value) throws SQLClientInfoException
+  {
+    connection.setClientInfo(name,value);
+  }
+
+  public void setClientInfo(Properties properties) throws SQLClientInfoException
+  {
+    connection.setClientInfo(properties);
+  }
+
+  public String getClientInfo(String name) throws SQLException
+  {
+    return connection.getClientInfo(name);
+  }
+
+  public Properties getClientInfo() throws SQLException
+  {
+    return connection.getClientInfo();
+  }
+
+  public Array createArrayOf(String typeName, Object[] elements) throws SQLException
+  {
+    return connection.createArrayOf(typeName, elements);
+  }
+
+  public Struct createStruct(String typeName, Object[] attributes) throws SQLException
+  {
+    return connection.createStruct(typeName, attributes);
+  }
+
+  public <T> T unwrap(Class<T> iface) throws SQLException
+  {
+    return connection.unwrap(iface);
+  }
+
+  public boolean isWrapperFor(Class<?> iface) throws SQLException
+  {
+    return connection.isWrapperFor(iface);
   }
 }
