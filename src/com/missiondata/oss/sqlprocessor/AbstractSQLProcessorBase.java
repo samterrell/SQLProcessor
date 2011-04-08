@@ -20,10 +20,7 @@ package com.missiondata.oss.sqlprocessor;
 
 
 import java.math.BigInteger;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -76,6 +73,7 @@ abstract public class AbstractSQLProcessorBase
    * A convenience method that test rhs for equality with the first column
    * of the last row returned by the query
    *
+   * @param rhs Parameter to compare for equality
    * @return false if no rows are returned from the query or if the first
    *  column returned from the query is not <code>.equals</code>
    */
@@ -100,9 +98,9 @@ abstract public class AbstractSQLProcessorBase
    *
    * @see #process(java.sql.ResultSet)
    *
-   * @param resultSet
+   * @param resultSet The result set to process
    * @return true to continue with processing.  false to abort processing
-   * @throws SQLException
+   * @throws SQLException thrown from underlying JDBC
    */
   protected boolean processAndContinue(ResultSet resultSet) throws SQLException
   {
@@ -118,8 +116,10 @@ abstract public class AbstractSQLProcessorBase
    * This method is called if a ResultSet exists, otherwise another
    * process method is called.
    *
+   * @param resultSet The result set to process
    * @see #process(int rowsUpdated)
    * @see #process(int rowsUpdated, BigInteger insertedId)
+   * @throws java.sql.SQLException Thrown from underlying JDBC
    */
   protected void process(ResultSet resultSet) throws SQLException
   {
@@ -131,9 +131,12 @@ abstract public class AbstractSQLProcessorBase
    * This method is called if no ResultSet or insertion id was
    * available during processing
    *
+   * @param rowsUpdated The number of rows updated.
    * @see #process(ResultSet resultSet)
    * @see #process(int rowsUpdated, BigInteger insertedId)
+   * @throws java.sql.SQLException Thrown from underlying JDBC
    */
+  @SuppressWarnings("unused")
   protected void process(int rowsUpdated) throws SQLException
   {
   }
@@ -143,17 +146,33 @@ abstract public class AbstractSQLProcessorBase
    * This method is called if there are no resultsets, and an
    * insertion id was available during processing.
    *
+   * @param rowsUpdated The number of rows updated
+   * @param insertedId The inserted row ID
    * @see #process(int rowsUpdated)
    * @see #process(ResultSet resultSet)
+   * @throws java.sql.SQLException Thrown from underlying JDBC
 
    */
+  @SuppressWarnings("unused")
   protected void process(int rowsUpdated, BigInteger insertedId) throws SQLException
   {
+  }
+
+  /** Should be overridden to process the results metadata.
+   *
+   * This method is called on queries with the result's metadata.
+   * @param metadata The metadata for the results.
+   */
+  @SuppressWarnings("unused")
+  protected void processMetaData(ResultSetMetaData metadata) {
   }
 
   /**
    * Should be used if a transaction is needed across multiple interactions
    * with the database.
+   * @param connection The connection on which to execute this SQL
+   * @return The number of rows updated
+   * @throws SQLSystemException A wrapped SQLException with an added message.
    */
   public int execute(final Connection connection) throws SQLSystemException
   {
@@ -176,7 +195,7 @@ abstract public class AbstractSQLProcessorBase
    * A new parameter evaluator is added to the end of a list of possible parameter evaluators.
    * Evaluators are called in the order they are added until a non-null value is returned.
    *
-   * @param evaluator
+   * @param evaluator Evaluator to be added.
    */
   public void addEvaluator(ParameterEvaluator evaluator)
   {
@@ -187,8 +206,9 @@ abstract public class AbstractSQLProcessorBase
    * Runs the update, insert or query that was specified in the constructor.
    *
    * @param dataSourceJndiName - the JNDI name of a DataSource that the sql will act on
-   * @return
+   * @return The number of rows updated
    */
+  @SuppressWarnings("unused")
   public int execute(String dataSourceJndiName)
   {
     return execute(new DataSourceConnectionSource(dataSourceJndiName));
@@ -198,6 +218,8 @@ abstract public class AbstractSQLProcessorBase
    * Runs the update, insert or query that was specified in the constructor.
    *
    * @param connectionSource  the ConnectionSource for the database that the sql will act on
+   * @return The number of rows updated
+   * @throws SQLSystemException A wrapped SQLException with an added message
    */
   public int execute(ConnectionSource connectionSource) throws SQLSystemException
   {
@@ -212,7 +234,7 @@ abstract public class AbstractSQLProcessorBase
     {
       preparedStatement = connection.prepareStatement(taggedSQL.getPreparedString());
 
-      ResultSet resultSet = null;
+      ResultSet resultSet;
       while (isSetUp())
       {
         prepareStatement(preparedStatement);
@@ -228,6 +250,7 @@ abstract public class AbstractSQLProcessorBase
 
             if (resultSet != null)
             {
+              processMetaData(resultSet.getMetaData());
               boolean continueProcessing = true;
               ProxyRestrictingResultSet.RestrictedResultSet restrictedResultSet = ProxyRestrictingResultSet.restrict(resultSet);
               while (continueProcessing && resultSet.next())
@@ -244,7 +267,6 @@ abstract public class AbstractSQLProcessorBase
               if (resultSet != null)
               {
                 resultSet.close();
-                resultSet = null;
               }
             }
             catch (SQLException ignore)
@@ -280,7 +302,6 @@ abstract public class AbstractSQLProcessorBase
         if (preparedStatement != null)
         {
           preparedStatement.close();
-          preparedStatement = null;
         }
       }
       catch (SQLException ignore)
@@ -306,14 +327,13 @@ abstract public class AbstractSQLProcessorBase
           "SQL: " + rawSQL);
       }
 
-      for (Iterator i = taggedSQL.getParameterIndices(key).iterator(); i.hasNext();)
+      for (Object o : taggedSQL.getParameterIndices(key))
       {
-        int idx = ((Integer) i.next()).intValue();
+        int idx = (Integer) o;
         if (value instanceof SQLNull)
         {
           preparedStatement.setNull(idx, ((SQLNull) value).getType());
-        }
-        else
+        } else
         {
           preparedStatement.setObject(idx, value);
         }
@@ -335,7 +355,7 @@ abstract public class AbstractSQLProcessorBase
 
   private Object getValueForLogging(String key)
   {
-    Object value = null;
+    Object value;
     try
     {
       value = getValue(key);
@@ -393,7 +413,11 @@ abstract public class AbstractSQLProcessorBase
   /**
    * If you just want to use the tagged sql syntax and pretty printing power of the sqlprocessor,
    * Use this method instead of executes
+   * @param connection Connection to generate prepared statement on.
+   * @return Returns prepared statement.
+   * @throws java.sql.SQLException Thrown by underlying JDBC
    */
+  @SuppressWarnings("unused")
   public PreparedStatement getPreparedStatement(Connection connection) throws SQLException
   {
     PreparedStatement preparedStatement = connection.prepareStatement(taggedSQL.getPreparedString());
@@ -432,9 +456,11 @@ abstract public class AbstractSQLProcessorBase
    * If not implemented by a derived class, a null is always
    * returned and no inserted ids are tracked during execution.
    *
+   * @param conn The JDBC connection to call this statement on.
    * @see #getInsertedIds()
    * @see #getLastInsertedId()
    *
+   * @return Row ID of last inserted row.
    */
   protected BigInteger fetchLastInsertedId(Connection conn)
   {
@@ -449,10 +475,11 @@ abstract public class AbstractSQLProcessorBase
    * @see #fetchLastInsertedId(java.sql.Connection))
    * @see #getLastInsertedId()
    *
+   * @return Array of all row ID's from inserts.
    */
   public BigInteger[] getInsertedIds()
   {
-    return (BigInteger[]) insertedIds.toArray(new BigInteger[insertedIds.size()]);
+    return insertedIds.toArray(new BigInteger[insertedIds.size()]);
   }
 
   /**
@@ -463,6 +490,7 @@ abstract public class AbstractSQLProcessorBase
    * @see #fetchLastInsertedId(java.sql.Connection))
    * @see #getInsertedIds()
    *
+   * @return Row ID of last Insert.
    */
   public BigInteger getLastInsertedId()
   {
@@ -483,18 +511,18 @@ abstract public class AbstractSQLProcessorBase
    * as info messages consisting of executed statements in a form that can
    * be copied and used in database query tools
    *
-   * @param loggingCapability
+   * @param loggingCapability See(@LoggingCapability)
    */
   public void setLoggingCapability(LoggingCapability loggingCapability)
   {
-    this.loggingImpl = loggingCapability;
+    AbstractSQLProcessorBase.loggingImpl = loggingCapability;
   }
 
   /**
    * {@link InsertedIdCapability} provides AbstractSQLProcessor with the ability
    * to store the ids generated by INSERT statements.
    *
-   * @param insertedIdCapability
+   * @param insertedIdCapability See(@InsertedIdCapability)
    */
   public void setInsertedIdCapability(InsertedIdCapability insertedIdCapability)
   {
@@ -537,7 +565,7 @@ abstract public class AbstractSQLProcessorBase
 
   private boolean setupOverridden=true;
 
-  private List insertedIds = new LinkedList();
+  private List<BigInteger> insertedIds = new LinkedList<BigInteger>();
 
   private static LoggingCapability loggingImpl = LoggingCapabilityFactory.getLoggingCapability("sqlprocessor");
 }
