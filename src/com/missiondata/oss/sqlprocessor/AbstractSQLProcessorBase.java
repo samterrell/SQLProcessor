@@ -164,7 +164,7 @@ abstract public class AbstractSQLProcessorBase
    * @param metadata The metadata for the results.
    */
   @SuppressWarnings("unused")
-  protected void processMetaData(ResultSetMetaData metadata) {
+  protected void processMetaData(ResultSetMetaData metadata) throws SQLException {
   }
 
   /**
