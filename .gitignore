@@ -5,3 +5,5 @@ SQLProcessor.iml
 /.externalToolBuilders
 deploy
 classes
+
+/bin
