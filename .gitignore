@@ -1,2 +1,7 @@
 .idea
 SQLProcessor.iml
+/.classpath
+/.project
+/.externalToolBuilders
+deploy
+classes
