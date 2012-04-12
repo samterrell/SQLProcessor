@@ -5,7 +5,7 @@ Build process using build.xml:
 
 - JDK 1.4, http://java.sun.com/
 - Ant 1.5, http://ant.apache.org/, not included
-- JUnit, http://junit.sourceforge.net/, not included
+- JUnit, http://junit.sourceforge.net/, included
 - MockObjects v0.5, http://mockobjects.com, included
 - BeanShell 2.0b1, http://beanshell.org, included
 - Jakarta Log4j 1.2.8, http://http://jakarta.apache.org/log4j/docs/, included
